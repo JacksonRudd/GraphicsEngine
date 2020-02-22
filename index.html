@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html>
+ <head>
+ <script src="https://unpkg.com/mathjs/dist/math.min.js"></script>
+</head>
+
+
+<body>
+
+<canvas id="myCanvas" width="500" height="500" style="border:1px solid #d3d3d3;">
+Your browser does not support the HTML5 canvas tag.</canvas>
+    <input type="range" min="-20" max="20" value="5" class="slider" id="x0" >x0
+    <input type="range" min="-20" max="20" value="5" class="slider" id="y0" >y0
+    <input type="range" min="-20" max="20" value="5" class="slider" id="z0" >z0
+    <input type="range" min="0" max="15" value="5" class="slider" id="len" >len
+
+    <input type="range" min="-20" max="-1" value="5" class="slider" id="n" >n
+    <input type="range" min="-20" max="-10" value="5" class="slider" id="f" >f
+    <input type="range" min="-20" max="20" value="5" class="slider" id="r" >r
+    <input type="range" min="-20" max="20" value="5" class="slider" id="l" >l
+    <input type="range" min="-20" max="20" value="5" class="slider" id="t" >t
+    <input type="range" min="-20" max="20" value="5" class="slider" id="b" >b
+
+
+<script>
+document.getElementById("x0").oninput = function() {setX( this.value);}
+document.getElementById("y0").oninput = function() {setY( this.value);}
+document.getElementById("z0").oninput = function() {setZ( this.value);}
+document.getElementById("len").oninput = function() {setLen( this.value);}
+document.getElementById("n").oninput = function() {setN( this.value);}
+document.getElementById("f").oninput = function() {setF( this.value);}
+document.getElementById("l").oninput = function() {setL( this.value);}
+document.getElementById("r").oninput = function() {setR( this.value);}
+document.getElementById("t").oninput = function() {setT( this.value);}
+document.getElementById("b").oninput = function() {setB( this.value);}
+
+var c = document.getElementById("myCanvas");
+var ctx = c.getContext("2d");
+var time = 0;
+
+var z0 = -25;
+var x0 = -3;
+var y0 = -3;
+var len = 8;
+var n = -15;
+var f = -40;
+var l =-5;
+var r = 5;
+var t = 5;
+var b = -5;
+
+function setX(i){
+    x0 = i;
+}
+function setY(i){
+    y0 = i;
+}function setZ(i){
+    z0 = i;
+}function setLen(i){
+    len = parseInt(i);
+}function setN(i){
+    n = parseInt(i);
+}function setF(i){
+    f = parseInt(i);
+}
+function setL(i){
+    l = parseInt(i);
+}
+function setR(i){
+    r = parseInt(i);
+}
+function setT(i){
+    t = parseInt(i);
+}
+function setB(i){
+    b = parseInt(i);
+}
+function canvasPoint(x,y){
+    var p = {};
+    p.x = x;
+    p.y = y;
+    return p;
+}
+
+function point(x, y ,z){
+    var p = {};
+    p.x = x;
+    p.y = y;
+    p.z = z;
+    p.toVec = math.matrix([[x, y , z ,1]])
+    return p;
+}
+function fromVector(m){
+    return point(m._data[0][0], m._data[0][1], m._data[0][2])
+}
+
+
+
+function proj(sP) {
+
+
+    var projective = math.matrix([ 
+        [2*n/(r-l), 0 , 0 , 0 ],
+        [0, 2*n/(t-b) , 0, 0], 
+        [-(r+l) / (r - l) , -(t+b)/(t-b), (f+n)/(f-n), 1 ] ,
+        [0 , 0 , -2*f*n/(f-n), 0] 
+    ])
+    var fin = math.multiply(sP, projective);
+    var z = fin._data[0][3]
+    var x = (fin._data[0][0]/z )*70+ 250;
+    var y = (fin._data[0][1]/z )*70 + 250;
+
+
+    return canvasPoint(x, y);
+}
+
+function tran(p, time){
+    
+    var translate = math.matrix([[1,0,0,0], [0,1,0,0], [0,0,1,0], [-x0, -y0 ,-z0,1]]);
+    //time = 0;
+    var rotate = math.matrix ([[1, 0 , 0 ,0], [0, math.cos(time) , math.sin(time) , 0] , [0, -math.sin(time), math.cos(time), 0] ,[0 , 0, 0 , 1]])
+    var rotate2 = math.matrix ([[math.cos(time), math.sin(time) , 0 ,0], [-math.sin(time), math.cos(time) , 0, 0] , [0, 0, 1, 0] ,[0 , 0, 0 , 1]])
+    var rotate3 = math.matrix ([[math.cos(time), 0, -math.sin(time)  ,0], [0, 1 , 0, 0] , [math.sin(time), 0, math.cos(time), 0] ,[0 , 0, 0 , 1]])
+    var translate2 = math.matrix([[1,0,0,0], [0,1,0,0], [0,0,1,0], [x0, y0 ,z0,1]]);
+
+    rotate = math.multiply(translate, rotate);
+    rotate = math.multiply(rotate, rotate2);
+    rotate = math.multiply(rotate , rotate3);
+    rotate = math.multiply(rotate , translate2);
+
+
+    
+    //var translated = math.multiply( p.toVec, translate);
+    var rotated = math.multiply( p.toVec, rotate);
+
+    return rotated;
+    //return point(p.x + time % c.width, p.y + time % c.height, p.z);
+}
+
+//canvas
+function line (p1, p2){
+    var l = {};
+    l.p1 = (time) =>  proj(tran(p1, time));
+    l.p2 =(time) => proj(tran(p2, time))
+    return l;
+}
+
+
+function drawLine(line, time){
+    var p1 = line.p1(time);
+    var p2 = line.p2(time);
+    ctx.beginPath();
+    ctx.moveTo(p1.x, p1.y);
+    ctx.lineTo(p2.x, p2.y);
+    ctx.stroke();  
+
+  
+}
+
+
+
+
+lines = [
+    line(point(x0,y0, z0), point(x0 + len,y0, z0)),
+    line(point(x0 + len,y0, z0 ), point(x0 + len,y0 + len, z0)),
+    line(point(x0+ len,y0 + len, z0), point(x0,y0 + len, z0)),
+    line(point(x0,y0 + len, z0), point(x0,y0, z0)),
+    
+    line(point(x0,y0, z0), point(x0,y0, z0 + len)),
+    line(point(x0 + len,y0, z0 ), point(x0 + len,y0, z0 + len)),
+    line(point(x0+ len,y0 + len, z0), point(x0 + len,y0 + len, z0 + len)),
+    line(point(x0,y0 + len, z0), point(x0,y0 + len, z0 + len)),
+
+    line(point(x0,y0, z0 + len), point(x0 + len,y0, z0 + len)),
+    line(point(x0 + len,y0, z0 + len), point(x0 + len,y0 + len, z0+ len)),
+    line(point(x0+ len,y0 + len, z0+ len), point(x0,y0 + len, z0+ len)),
+    line(point(x0,y0 + len, z0+ len), point(x0,y0, z0+ len)),
+
+    
+   
+    
+]
+
+function draw() {
+    time += 0.01;
+    ctx.clearRect(0, 0, c.width, c.height);
+    lines.forEach(element => {
+        drawLine(element, time);
+    });
+}
+
+setInterval(draw, 10);
+//draw()
+</script>
+
+</body>
+</html>
