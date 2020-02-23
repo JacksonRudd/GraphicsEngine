@@ -23,6 +23,51 @@ Your browser does not support the HTML5 canvas tag.</canvas>
 
 
 <script>
+
+document.addEventListener('keydown', keyDownHandler, false);
+document.addEventListener('keyup', keyUpHandler, false);
+
+var rightPressed = false;
+var leftPressed = false;
+var upPressed = false;
+var downPressed = false;
+var spacePressed = false;
+function keyDownHandler(event) {
+    if(event.keyCode == 39) {
+        rightPressed = true;
+    }
+    else if(event.keyCode == 37) {
+        leftPressed = true;
+    }
+    if(event.keyCode == 40) {
+    	downPressed = true;
+    }
+    if(event.keyCode == 32) {
+    	spacePressed = true;
+    }
+    else if(event.keyCode == 38) {
+    	upPressed = true;
+    }
+}
+
+function keyUpHandler(event) {
+    if(event.keyCode == 39) {
+        rightPressed = false;
+    }
+    else if(event.keyCode == 37) {
+        leftPressed = false;
+    }
+    if(event.keyCode == 32) {
+    	spacePressed = false;
+    }
+    if(event.keyCode == 40) {
+    	downPressed = false;
+    }
+    else if(event.keyCode == 38) {
+    	upPressed = false;
+    }
+}
+
 document.getElementById("x0").oninput = function() {setX( this.value);}
 document.getElementById("y0").oninput = function() {setY( this.value);}
 document.getElementById("z0").oninput = function() {setZ( this.value);}
@@ -48,7 +93,30 @@ var l =-5;
 var r = 5;
 var t = 5;
 var b = -5;
+var camera = math.matrix([ [1,0,0,0] , [0 , 1 , 0, 0], [0, 0 , 1 , 0] , [0 , 0 , 0 ,1]])
+var cameraVec = point(0,0,0)
+function move(x, y ,z){
+    camera.x += x;
+    camera.y += y;
+    camera.z +=z;
+    camera = math.multiply(camera, math.matrix([[1, 0 , 0 ,0] ,[0, 1 , 0 ,0] , [0, 0 , 1 ,0] , [x, y , z ,1]]))
+}
 
+function rotate(left){
+    var translate = math.matrix([[1,0,0,0], [0,1,0,0], [0,0,1,0], [-cameraVec.x, -cameraVec.y ,-cameraVec.z,1]]);
+    //time = 0;
+
+    //var rotate = math.matrix ([[1, 0 , 0 ,0], [0, math.cos(left) , math.sin(left) , 0] , [0, -math.sin(left), math.cos(left), 0] ,[0 , 0, 0 , 1]])
+   // var rotate = math.matrix ([[math.cos(left), math.sin(left) , 0 ,0], [-math.sin(left), math.cos(left) , 0, 0] , [0, 0, 1, 0] ,[0 , 0, 0 , 1]])
+    var rotate = math.matrix ([[math.cos(left), 0, -math.sin(left)  ,0], [0, 1 , 0, 0] , [math.sin(left), 0, math.cos(left), 0] ,[0 , 0, 0 , 1]])
+    var translate2 = math.matrix([[1,0,0,0], [0,1,0,0], [0,0,1,0], [cameraVec.x, cameraVec.y ,cameraVec.z,1]]);
+    
+
+    rotate = math.multiply(translate, rotate);
+    rotate = math.multiply(rotate , translate2);
+    camera = math.multiply(camera, rotate )
+
+}
 function setX(i){
     x0 = i;
 }
@@ -115,7 +183,7 @@ function proj(sP) {
 }
 
 function tran(p, time){
-    
+    //time = 0;
     var translate = math.matrix([[1,0,0,0], [0,1,0,0], [0,0,1,0], [-x0, -y0 ,-z0,1]]);
     //time = 0;
     var rotate = math.matrix ([[1, 0 , 0 ,0], [0, math.cos(time) , math.sin(time) , 0] , [0, -math.sin(time), math.cos(time), 0] ,[0 , 0, 0 , 1]])
@@ -132,8 +200,8 @@ function tran(p, time){
     
     //var translated = math.multiply( p.toVec, translate);
     var rotated = math.multiply( p.toVec, rotate);
-
-    return rotated;
+    var rc = math.multiply(rotated, camera);
+    return rc;
     //return point(p.x + time % c.width, p.y + time % c.height, p.z);
 }
 
@@ -177,11 +245,16 @@ lines = [
     line(point(x0,y0 + len, z0+ len), point(x0,y0, z0+ len)),
 
     
-   
-    
 ]
 
 function draw() {
+    if(spacePressed){
+        rotate(0.01*(rightPressed  - leftPressed))
+
+    }
+    else{    
+        move( -0.5*(rightPressed  - leftPressed),0.0, 0.5* (upPressed - downPressed))
+    }
     time += 0.01;
     ctx.clearRect(0, 0, c.width, c.height);
     lines.forEach(element => {
